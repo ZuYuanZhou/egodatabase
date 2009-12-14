@@ -65,9 +65,10 @@ valistArray;\
 #define EGODBLockLog(s,...)
 #endif
 
-@interface EGODatabase (Private)
+@interface EGODatabase ()
 - (BOOL)bindStatement:(sqlite3_stmt*)statement toParameters:(NSArray*)parameters;
 - (void)bindObject:(id)obj toColumn:(int)idx inStatement:(sqlite3_stmt*)pStmt;
+@property (assign) BOOL isTransactionInProgress;
 @end
 
 @implementation EGODatabase
@@ -275,12 +276,8 @@ valistArray;\
 	
 	while(sqlite3_step(statement) == SQLITE_ROW) {
 		EGODatabaseRow* row = [[EGODatabaseRow alloc] initWithDatabaseResult:result];
-		for(x=0;x<columnCount;x++) {
-			if(sqlite3_column_text(statement,x) != NULL) {
-				[row.columnData addObject:[[[NSString alloc] initWithUTF8String:(char *)sqlite3_column_text(statement,x)] autorelease]];
-			} else {
-				[row.columnData addObject:@""];
-			}
+		for(x=0; x<columnCount; x++) {
+			[row addColumnData:(char *)sqlite3_column_text(statement,x)];
 		}
 		
 		[result addRow:row];
@@ -349,6 +346,35 @@ valistArray;\
 	}
 }
 
+- (long long)lastInsertID
+{
+	return sqlite3_last_insert_rowid(handle);
+}
+
+- (void)beginTransaction
+{
+	if (![self isTransactionInProgress]) {
+		[self setIsTransactionInProgress:YES];
+		[self executeQuery:@"begin transaction"];	
+	}
+}
+
+- (void)commit
+{
+	if ([self isTransactionInProgress]) {
+		[self executeQuery:@"commit"];	
+	}
+	[self setIsTransactionInProgress:NO];
+}
+
+- (void)rollback
+{
+	if ([self isTransactionInProgress]) {
+		[self executeQuery:@"rollback"];		
+	}
+	[self setIsTransactionInProgress:NO];
+}
+
 - (void)dealloc {
 	[self close];
 	[executeLock release];
@@ -356,4 +382,5 @@ valistArray;\
 	[super dealloc];
 }
 
+@synthesize isTransactionInProgress;
 @end

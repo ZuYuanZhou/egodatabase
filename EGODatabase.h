@@ -35,6 +35,7 @@
 @protected
 	NSString* databasePath;
 	NSLock* executeLock;
+	BOOL isTransactionInProgress;
 	
 @private
 	sqlite3* handle;
@@ -78,5 +79,10 @@
 - (NSString*)lastErrorMessage;
 - (BOOL)hadError;
 - (int)lastErrorCode;
+- (void)rollback;
+- (void)commit;
+- (void)beginTransaction;
+- (long long)lastInsertID;
 
+@property (assign, readonly) BOOL isTransactionInProgress;
 @end
